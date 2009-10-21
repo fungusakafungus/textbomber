@@ -18,7 +18,8 @@ def sign(x):
 np.length=lambda(vec): np.sqrt(sum(vec**2))
 
 class Ship(object):
-    angle = 0 # face up
+    angle = 0
+    last_angle = 0
     imagesnum = 48
     images = {}
     scalefactor = 1
@@ -34,11 +35,11 @@ class Ship(object):
     turn = 0 # 0,1,-1 turn direction
     shoot = 0 # don't shoot!
     max_shoot_distance = 100
-    shot_surface = pygame.Surface((max_shoot_distance*2,)*2, pygame.SRCALPHA)
     position = np.array([0., 0.])
-    last_position = position
-    last_line=None
+    shot_vector = position
+    dist=0
     def __init__(self):
+        global screen,transparent
         self.shipimg = pygame.image.load("images/ship.png").convert_alpha()
         self.shipimg = pygame.transform.rotate(self.shipimg,-90)
         self.shiprect = self.shipimg.get_rect()
@@ -46,6 +47,9 @@ class Ship(object):
         self.shiprect.height = self.shiprect.height * 1.42 * self.scalefactor
         self.shiprect.center = (0,0)
         #print self.shiprect
+        self.last_shiprect=self.shiprect
+        self.shot_surface=screen.convert_alpha()
+        self.shot_surface.fill(transparent)
 
     def move(self,xy):
         """
@@ -54,11 +58,8 @@ class Ship(object):
         """
         #print "moveto %s,%s" % (x,y)
         self.last_position = self.position
-        if self.last_line:
-            self.last_line[0] = [x1-x2 for x1,x2 in zip(self.last_line[0],xy)]
-            self.last_line[1] = [x1-x2 for x1,x2 in zip(self.last_line[1],xy)]
+        self.xy = xy
         self.position += np.array(xy)
-
 
     def tick(self):
         deltat=pygame.time.get_ticks()-self.last_ticks
@@ -72,6 +73,7 @@ class Ship(object):
         else:
             self.angular_velocity = 0
 
+        self.last_angle=self.angle
         self.angle += self.angular_velocity*deltat
 
         # acceleration:
@@ -108,17 +110,28 @@ class Ship(object):
 
         self.last_ticks=pygame.time.get_ticks()
 
-    def draw_shot(self):
+    def draw_shot(self,background):
         global dirty_rects, transparent
         if self.shoot:
-            distance=math.sin(self.position[0]*math.pi/width)*\
+            last_dist=self.dist
+            self.dist=math.sin(self.position[0]*math.pi/width)*\
                      math.sin(self.position[1]*math.pi/height)*self.max_shoot_distance
-            shotstart = (self.max_shoot_distance,)*2 # center of shot_surface
-            shotend = distance*math.cos(self.angle), distance*math.sin(self.angle)
-            shotend = shotstart[0]+shotend[0], shotstart[1]+shotend[1]
-            #endofline=self.position[0]+distance*math.cos(self.angle),self.position[1]+distance*math.sin(self.angle)
-            if not self.last_line:
-                self.last_line=[shotend,self.position.tolist()]
+            last_shot_vector=self.shot_vector
+            self.shot_vector = np.array([self.dist*math.cos(self.angle), self.dist*math.sin(self.angle)])
+
+            point1=np.array([last_dist,last_dist])
+            polygon=np.array([
+                        point1,
+                        point1+np.array(last_shot_vector),
+                        point1+np.array(self.xy)+self.shot_vector,
+                        point1+np.array(self.xy)
+                    ]).tolist()
+            shot_area=pygame.Rect(
+                    (0,0),
+                    (last_dist+abs(self.xy[0])+self.dist, last_dist+abs(self.xy[1])+self.dist)
+                )
+            assert shot_area.topleft==(0,0), "%s!=0,0" % shot_area.topleft
+            shot_pos=(self.position-self.xy-point1).tolist()
 
             #dirty = pygame.draw.aalines(background,white,1,(self.position,endofline)+self.last_line,0)
             # aligned = velocity aligned with shot direction, 0..1
@@ -136,20 +149,21 @@ class Ship(object):
             value = 20+(1.0-aligned)*80
             alpha = 20
             color.hsva = hue,saturation,value,alpha
-            old_shot_surface=self.shot_surface.copy()
-            self.shot_surface.fill(transparent)
-            pygame.draw.polygon(self.shot_surface,color,[shotstart,shotend]+self.last_line,0)
-            copy=old_shot_surface.copy()
-            copy.blit(self.shot_surface,(0,0),None,pygame.BLEND_RGB_SUB)
-            dirty_rects += (background.blit(copy,self.position.tolist()),)
+            self.shot_surface.fill(transparent,shot_area)
+            pygame.draw.polygon(self.shot_surface,color,polygon,0)
+            #print "polygon: %s" % ([shotstart,shotend]+self.last_line)
+            #dirty_rects += [background.blit(self.shot_surface,shot_pos,shot_area)]
+            dirty_rects += [pygame.draw.circle(background,pygame.Color('white'),self.position,int(self.dist+10),1)]
+            return shot_area
 
-            self.last_line=[shotend,shotstart]
         else:
-            self.last_line=None
+            pass
 
     def draw(self):
-        global dirty_rects
-        self.draw_shot()
+        global dirty_rects, background, screen
+        shot_rect=self.draw_shot(background)
+        screen.blit(background,(0,0),shot_rect)
+
         index = int(self.angle / (2*math.pi) * self.imagesnum)
         #pygame.draw.polygon(screen, (255,255,255), (self.x, self.y), 1)
         #pygame.draw.rect(screen, white, self.shiprect, 1)
@@ -157,13 +171,14 @@ class Ship(object):
         dirty=screen.blit(background,(0,0),self.last_shiprect)
         dirty_rects += dirty,
         screen.blit(background,(0,0))
-        dirty=screen.blit(self.images[index], self.position.tolist())
-        dirty_rects += dirty,self.shiprect.__copy__(),self.last_shiprect.__copy__()
+        tmp=self.position-np.array((self.shiprect.width/2,self.shiprect.height/2))
+        dirty=screen.blit(self.images[index], tmp.tolist())
+        self.last_shiprect = dirty
+        dirty_rects += dirty,self.shiprect.__copy__()
         #screen.blit(foreground,(0,0))
 
     def clear(self):
-        self.last_shiprect = self.shiprect.__copy__()
-        #screen.blit(background,(0,0),self.last_shiprect)
+        screen.blit(background,(0,0),self.last_shiprect)
         #pygame.draw.fill(screen, black, self.shiprect, 1)
 
 
@@ -177,7 +192,7 @@ speed = [2, 2]
 black = 0, 0, 0
 white = 255, 255, 255
 transparent = 0, 0, 0, 0
-fps = 15
+fps = 8
 
 screen = pygame.display.set_mode(size)
 print "display info: %s" % pygame.display.Info()
@@ -227,8 +242,8 @@ while 1:
 #        ship.moveto(x,y)
 #
     elif event.type == pygame.TIMEREVENT:
-        ship.clear()
         ship.tick()
+        ship.clear()
         ship.draw()
         pygame.display.update(dirty_rects)
         #pygame.display.flip()
