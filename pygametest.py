@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+# vim: awa
 
 import os, sys, pygame, math
+from pygame.locals import *
 import numpy as np
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
@@ -17,7 +19,7 @@ def sign(x):
 
 np.length=lambda(vec): np.sqrt(sum(vec**2))
 
-class Ship(object):
+class Ship(pygame.sprite.Sprite):
     angle = 0
     last_angle = 0
     imagesnum = 48
@@ -98,8 +100,7 @@ class Ship(object):
         elif self.angle < 0:
             self.angle += 2 * math.pi
         if not screen.get_rect().collidepoint(self.position.tolist()):
-            print self.position
-            self.position = self.position % [screen.get_width(), screen.get_height()]
+            self.position %= [background.get_width(), background.get_height()]
         index = int(self.angle / (2*math.pi) * self.imagesnum)
         if not self.images.has_key(index):
             self.images[index] = pygame.transform.rotozoom(self.shipimg, -self.angle / (2*math.pi) * 360, self.scalefactor)
@@ -138,17 +139,16 @@ class Ship(object):
 
         #self.max_angular_velocity = max(self.angular_velocity,self.max_angular_velocity)
         max_angular_velocity = 0.01
-        color = [255,255,255]
-        #hue = math.sqrt(sum([x*x for x in self.velocity])) * 10000 % 360 # 0 = red, 0-360
-        #saturation = math.atan(abs(self.angular_velocity/max_angular_velocity)*math.pi/2.0)*100
-        #if saturation > 100:
-        #    saturation = 100
+        color = pygame.Color(*white)
+        hue = math.sqrt(sum([x*x for x in self.velocity])) * 10000 % 360 # 0 = red, 0-360
+        saturation = math.atan(abs(self.angular_velocity/max_angular_velocity)*math.pi/2.0)*100
+        if saturation > 100:
+            saturation = 100
         #saturation = 100 - saturation
         value = 20+(1.0-aligned)*80
-        #alpha = 20
-        #color.hsva = hue,saturation,value,alpha
-        color=pygame.color.multiply(color,value)
-
+        alpha = 20
+        color.hsva = hue,saturation,value,alpha
+        self.shot_surface.fill(transparent,shot_rect)
         self.shot_surface.fill(transparent,(0,0)+shot_rect.size)
         pygame.draw.polygon(self.shot_surface,color,polygon,0)
         target.blit(self.shot_surface,shot_rect,(0,0)+shot_rect.size)
@@ -200,41 +200,41 @@ dirty_rects=[]
 ship = Ship()
 
 
-pygame.TIMEREVENT = pygame.USEREVENT+0
+TIMEREVENT = USEREVENT+0
 
 #pygame.event.set_grab(True)
 pygame.mouse.set_visible(False)
-pygame.time.set_timer(pygame.TIMEREVENT, 1000/fps)
+pygame.time.set_timer(TIMEREVENT, 1000/fps)
 
 while 1:
     event = pygame.event.wait()
-    if event.type == pygame.QUIT: 
+    if event.type == QUIT: 
         quit()
 
-    elif event.type == pygame.KEYDOWN:
+    elif event.type == KEYDOWN:
         #print event.key
-        if event.key == pygame.K_UP:
+        if event.key == K_UP:
             ship.accelerate=1
-        elif event.key == pygame.K_LEFT:
+        elif event.key == K_LEFT:
             ship.turn=-1.
-        elif event.key == pygame.K_RIGHT:
+        elif event.key == K_RIGHT:
             ship.turn=1.
-        elif event.key == pygame.K_SPACE:
+        elif event.key == K_SPACE:
             ship.shoot=not ship.shoot
-    elif event.type == pygame.KEYUP:
+    elif event.type == KEYUP:
         #print event.key
-        if (event.key == pygame.K_q or event.key == pygame.K_ESCAPE): 
+        if (event.key == K_q or event.key == K_ESCAPE): 
             quit()
-        elif (event.key == pygame.K_UP):
+        elif (event.key == K_UP):
             ship.accelerate=0
-        elif event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+        elif event.key == K_LEFT or event.key == K_RIGHT:
             ship.turn=0
     
-#    elif event.type == pygame.MOUSEMOTION:
-#        x,y = event.pos
-#        ship.moveto(x,y)
-#
-    elif event.type == pygame.TIMEREVENT:
+    elif event.type == pygame.MOUSEMOTION:
+        x,y = event.pos
+        ship.move((x,y))
+
+    elif event.type == TIMEREVENT:
         ship.tick()
         ship.draw()
         pygame.display.update(dirty_rects)
