@@ -4,103 +4,154 @@ import sqlite3
 import random
 
 
-seed = None
-"""Initial state (history) of the Markov chain"""
+class DissociatedPress(object):
+    seed = None
+    """Initial state (history) of the Markov chain"""
 
-order = 5
-"""Initial order of the Markov chain used to generate text"""
+    order = 5
+    """Initial order of the Markov chain used to generate text"""
 
-max_order = 10
+    max_order = 10
 
-_conn = None
+    _conn = None
 
+    def __init__(self,dbfilename="default.sqlite"):
+        try:
+            self._conn = sqlite3.connect(dbfilename)
+            cur=self._conn.cursor()
+            self._conn.execute("select * from data")
+            cur.fetchone()
+            #_debug(cur.fetchall())
+            self._conn.execute("select * from meta")
+            cur.fetchone()
+            #_debug(cur.fetchall())
+        except:
+            self._createDB()
+        finally:
+            self._loadDB()
+        #self.order=property(self.order)
 
-def __init__(dbfilename="default.sqlite"):
-    global _conn
-    try:
-        _conn = sqlite3.connect(dbfilename)
-        cur=_conn.cursor()
-        _conn.execute("select * from data")
-        #cur.fetchone()
-        #_debug(cur.fetchall())
-        _conn.execute("select * from meta")
-        #cur.fetchone()
-        #_debug(cur.fetchall())
-    except:
-        _createDB()
-    finally:
-        _loadDB()
+    def _createDB(self):
+        self._conn.isolation_level="DEFERRED"
+        self._conn.execute("create table meta(name text, value text)")
+        self._conn.execute(
+            """insert into meta(name, value) 
+                values ('max_order',?)""",
+            [self.max_order])
+        sql = "create table data(text_id int default 0,"
+        for i in range(self.max_order+1):
+            sql += "c%i char" % i
+            if i < self.max_order: sql += ","
+        sql += ")"
+        self._conn.execute(sql)
 
-def _createDB():
-    global max_order, _conn
-    _conn.isolation_level="DEFERRED"
-    _conn.execute("create table meta(name text, value text)")
-    _conn.execute(
-        """insert into meta(name, value) 
-            values ('max_order',?)""",
-        [max_order])
-    sql = "create table data(text_id int default 0,"
-    for i in range(max_order+1):
-        sql += "c%i char" % i
-        if i < max_order: sql += ","
-    sql += ")"
-    _conn.execute(sql)
+    def _loadDB(self):
+        cur=self._conn.cursor()
+        cur.execute("select value from meta where name = 'max_order'")
+        self.max_order=int(cur.fetchone()[0])
+        self._trySetInitialSeed()
 
-def _loadDB():
-    global max_order, _conn
-    cur=_conn.cursor()
-    cur.execute("select value from meta where name = 'max_order'")
-    max_order=int(cur.fetchone()[0])
+    def _clearDB(self):
+        self._conn.execute("delete from data")
 
-def _clearDB():
-    global _conn
-    _conn.execute("delete from data")
+    def analyze(self,input):
+        self._clearDB()
+        if len(input)<self.max_order:
+            raise Exception("input too short")
 
-def analyze(input):
-    global order, max_order, _conn
-    _clearDB()
-    if len(input)<max_order:
-        raise Exception("input too short")
+        input += input[:self.max_order]
+            
+        data = []
+        for i in range(len(input)-self.max_order):
+            str=input[i:i+self.max_order+1]
+            data += [[c for c in str]]
 
-    input += input[:max_order]
+        sql = "insert into data("
+        for i in range(self.max_order+1):
+            sql += "c%i" % i
+            if i < self.max_order: sql += ","
+        sql += ") values ("
+        sql += "?,"*self.max_order + "?)"
+
+        self._conn.executemany(sql,data)
+        self._conn.commit()
+        self._trySetInitialSeed()
+
+    def _trySetInitialSeed(self):
+        cur = self._conn.cursor()
+        cur.execute("select * from data limit 1")
+        row = cur.fetchone()
+        try:
+            self.__dict__['order']=self.max_order
+            self.seed = ''.join(row[1:-1])
+        except:
+            pass
+
+    def peek(self,prefer=None):
+        """Returns next character based on current chain settings"""
         
-    data = []
-    for i in range(len(input)-max_order):
-        str=input[i:i+max_order+1]
-        data += [[c for c in str]]
+        sql = "select c%i from (select c%i from data where 1=1 " % (self.order,self.order)
+        for i in range(self.order):
+            sql +="and c%i=? " % i
+        sql += " limit 100) order by random()"
+        cur = self._conn.cursor()
+        assert self.seed != None
+        try:
+            cur.execute(sql,[c for c in self.seed])
+        except Exception, e:
+            _debug( "execute(%s,%s)", (sql,[c for c in self.seed[:self.order]]))
+            raise e
 
-    sql = "insert into data("
-    for i in range(max_order+1):
-        sql += "c%i" % i
-        if i < max_order: sql += ","
-    sql += ") values ("
-    sql += "?,"*max_order + "?)"
-    _conn.executemany(sql,data)
-    _conn.commit()
+        row = cur.fetchone()
+        if row == None:
+            raise StopIteration("no next")
+        nextchar = row[0]
+        return nextchar
 
-def next(prefer=None):
-    """Returns next character based on current chain settings"""
+    def next(self,prefer=None):
+        """Returns next character and advances seed"""
 
-    global seed, order, max_order, _conn
-    seed=seed[:order]
+        nextchar = self.peek()
+        self.__dict__['seed'] = self.seed[1:]+nextchar
+        return nextchar
 
-    sql = "select c%i from data where 1=1 " % order
-    for i in range(order):
-        sql +="and c%i=? " % i
-    sql += "order by random() "
-    cur = _conn.cursor()
-    assert seed != None
-    cur.execute(sql,[c for c in seed[:order]])
-    _debug( "execute(%s,%s)", (sql,[c for c in seed[:order]]))
-    row = cur.fetchone()
-    if row == None:
-        raise StopIteration("no next")
-    nextchar = row[0]
-    seed = seed[1:]+nextchar
-    return nextchar
+    def setOrder(self, order):
+        if order > self.max_order:
+            raise RuntimeError("order(%s) > max_order(%s)" 
+                    % (order, self.max_order))
+        old_order = self.order
+        if order <= self.order:
+            self.__dict__['order'] = order
+            self.__dict__['seed'] = self.seed[:order]
+        else:
+            while order > self.order:
+                nextchar = self.peek()
+                self.__dict__['order'] = self.order + 1
+                self.__dict__['seed'] = self.seed + nextchar
+
+    def setSeed(self, seed):
+        if len(seed) != self.order:
+            raise RuntimeError("seed length(%s) != order(%s)" 
+                    % (len(seed), self.order))
+
+        self.__dict__['seed'] = seed
+
+        # check seed
+        old_seed = self.seed
+        try:
+            self.peek()
+        except StopIteration, e:
+            self.__dict__['seed'] = old_seed
+            raise RuntimeError("bad seed(%s)" % seed)
+
+    def __setattr__(self,name,value):
+        if name == 'order':
+            self.setOrder(value)
+        elif name == 'seed':
+            self.setSeed(value)
+        else:
+            object.__setattr__(self, name, value)
 
 def _debug(*str):
-    if 0:
+    if 1:
         print str
-
-__init__()

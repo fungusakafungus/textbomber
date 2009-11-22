@@ -3,12 +3,12 @@
 
 import unittest,os
 
-import dissociatedpress as dp
+from dissociatedpress import DissociatedPress
 
 class DissociatedPressTests(unittest.TestCase):
     def setUp(self):
-        dp.max_order=10
-        dp.order=5
+        #dp.max_order=10
+        #dp.order=5
         for path in ["tests/nonexistant"]:
             try:
                 os.unlink(path)
@@ -23,25 +23,25 @@ class DissociatedPressTests(unittest.TestCase):
             except: pass
 
     def testInitEmptyDB(self):
-        dp.__init__("tests/data/empty.sqlite")
+        dp = DissociatedPress("tests/data/empty.sqlite")
 
     def testInitNonExistantDB(self):
         path = "tests/nonexistant"
-        dp.__init__(path)
+        dp = DissociatedPress(path)
 
     def testCreate(self):
-        dp.__init__("tests/data/test.sqlite")
+        dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("abcdefghijk")
 
     def testNext(self):
-        dp.__init__("tests/data/test.sqlite")
+        dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("abcdefghijk")
-        dp.seed="abcde"
         dp.order=5
+        dp.seed="abcde"
         self.assertEquals(dp.next(),"f")
 
     def testRandomNext(self):
-        dp.__init__("tests/data/test.sqlite")
+        dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("abcdeXabcdeYabcdeZxxxxxxxxxxxxxxxx")
         dp.order=5
         res = set()
@@ -51,25 +51,25 @@ class DissociatedPressTests(unittest.TestCase):
         self.assertEquals(len(res),3)
 
     def testNextNext(self):
-        dp.__init__("tests/data/test.sqlite")
+        dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("abcdefghijklmnopq")
-        dp.seed="abcde"
         dp.order=5
+        dp.seed="abcde"
         self.assertEquals(dp.next(),"f")
         self.assertEquals(dp.next(),"g")
 
     def testCyclicNext(self):
-        dp.__init__("tests/data/test.sqlite")
+        dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("abcdefabcd")
-        dp.seed="abcde"
         dp.order=5
+        dp.seed="abcde"
         res=""
         for i in range(100):
             res+=dp.next()
         self.assertEquals(res,"fabcdabcde"*10)
 
     def testCyclic2(self):
-        dp.__init__("tests/data/test.sqlite")
+        dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("asdglkuzcgvhje")
         dp.order=5
         dp.seed="kuzcg"
@@ -77,32 +77,33 @@ class DissociatedPressTests(unittest.TestCase):
             dp.next()
 
     def testDreadedUnicode(self):
-        dp.__init__("tests/data/test.sqlite")
+        dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze(u"ÄbcdeXabcdeYabcdeZüxxxxxxxxxxxxxxx")
-        dp.seed=u"Yabcd"
         dp.order=5
+        dp.seed=u"Yabcd"
         for i in range(100):
             dp.next()
 
     def testBadSeed(self):
-        dp.__init__("tests/data/test.sqlite")
+        dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("abcdefghijklmnopq")
         dp.order=5
-        dp.seed="xxxx"
-        self.assertRaises(Exception,dp.next)
+        try:
+            dp.seed="xxxx"
+            raise unittest.AssertionError
+        except RuntimeError:
+            pass
 
     def testAnalyzeFile(self):
-        dp.__init__("tests/data/big.sqlite")
+        dp = DissociatedPress("tests/data/big.sqlite")
         contents = file("scrap/cducsu.txt").read()
         #dp.analyze(contents)
-        dp.seed=u"Einsatz"
-        dp.order=5
         for i in range(100):
             dp.next()
-    def testIncreaseOrder(self):
 
-        
+    def testIncreaseOrder(self):
+        pass
 
 if __name__ == '__main__' :
-    #unittest.main(defaultTest="DissociatedPressTests.testNextNext")
-    unittest.main()
+    unittest.main(defaultTest="DissociatedPressTests.testBadSeed")
+    #unittest.main()
