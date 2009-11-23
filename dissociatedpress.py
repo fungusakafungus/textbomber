@@ -112,7 +112,14 @@ class DissociatedPress(object):
         """Returns next character and advances seed"""
 
         nextchar = self.peek()
-        self.__dict__['seed'] = self.seed[1:]+nextchar
+        if self.order == self._targetOrder:
+            self.__dict__['seed'] = self.seed[1:]+nextchar
+        elif self.order < self._targetOrder:
+            self.__dict__['order'] = self.order + 1
+            self.__dict__['seed'] = self.seed+nextchar
+        else:
+            raise RuntimeError("self.order(%s) > self._targetOrder(%s)" 
+                    % (self.order, self._targetOrder))
         return nextchar
 
     def setOrder(self, order):
@@ -122,14 +129,20 @@ class DissociatedPress(object):
         old_order = self.order
         if order <= self.order:
             self.__dict__['order'] = order
-            self.__dict__['seed'] = self.seed[:order]
-        else:
-            while order > self.order:
-                nextchar = self.peek()
-                self.__dict__['order'] = self.order + 1
-                self.__dict__['seed'] = self.seed + nextchar
+            if self.seed and len(self.seed) != order:
+                self.seed = self.seed[-order:]
+
+        self._targetOrder = order
+#            while order > self.order:
+#                nextchar = self.peek()
+#                self.__dict__['order'] = self.order + 1
+#                if self.seed and len(self.seed) != order:
+#                    self.seed = self.seed + nextchar
 
     def setSeed(self, seed):
+        #try:
+        #    self.order = len(seed)
+        #except RuntimeError, e:
         if len(seed) != self.order:
             raise RuntimeError("seed length(%s) != order(%s)" 
                     % (len(seed), self.order))

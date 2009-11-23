@@ -33,6 +33,10 @@ class DissociatedPressTests(unittest.TestCase):
         dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("abcdefghijk")
 
+    def testSetOrderEarly(self):
+        dp = DissociatedPress("tests/data/test.sqlite")
+        dp.order = 4
+
     def testNext(self):
         dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("abcdefghijk")
@@ -101,27 +105,60 @@ class DissociatedPressTests(unittest.TestCase):
         for i in range(100):
             dp.next()
 
-    def testInitialSeed(self):
-        dp = DissociatedPress("tests/data/test.sqlite")
-        dp.analyze("0123456789")
-        dp.order = 5
-        self.assertEquals(dp.seed,"01234")
-
     def testIncreaseOrderContinuity(self):
         dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("0123456789")
         dp.order = 5
+        dp.seed = "01234"
         self.assertEquals(dp.next(),"5")
         dp.order = 6
         self.assertEquals(dp.next(),"6")
+        self.assertEquals(dp.next(),"7")
+
+    def testIncreaseOrderContinuity2(self):
+        dp = DissociatedPress("tests/data/test.sqlite")
+        dp.analyze("0123456789")
+        dp.order = 5
+        dp.seed = "01234"
+        self.assertEquals(dp.next(),"5")
+        dp.order = 10
+        self.assertEquals(dp.next(),"6")
+        self.assertEquals(dp.next(),"7")
+        self.assertEquals(dp.next(),"8")
+        self.assertEquals(dp.next(),"9")
+        self.assertEquals(dp.next(),"0")
+        self.assertEquals(dp.next(),"1")
 
     def testDecreaseOrderContinuity(self):
         dp = DissociatedPress("tests/data/test.sqlite")
         dp.analyze("0123456789")
         dp.order = 5
+        dp.seed = "01234"
         self.assertEquals(dp.next(),"5")
         dp.order = 4
         self.assertEquals(dp.next(),"6")
+
+    def testChangeOrderReadOrder(self):
+        dp = DissociatedPress("tests/data/test.sqlite")
+        dp.analyze("0123456789")
+        dp.order = 5
+        dp.seed = "01234"
+        self.assertEquals(dp.next(),"5")
+        dp.order = 10
+        for i in xrange(5):
+            dp.next()
+        self.assertEquals(dp.order,10)
+
+    def testChangeOrderReadOrder2(self):
+        dp = DissociatedPress("tests/data/test.sqlite")
+        dp.analyze("0123456789")
+        dp.order = 10
+        dp.seed = "0123456789"
+        self.assertEquals(dp.next(),"0")
+        dp.order = 3
+        for i in xrange(7):
+            dp.next()
+        self.assertEquals(dp.order,3)
 
 if __name__ == '__main__' :
     #unittest.main(defaultTest="DissociatedPressTests.testBadSeed")
