@@ -94,16 +94,35 @@ class DissociatedPressTests(unittest.TestCase):
         except RuntimeError:
             pass
 
-    def testAnalyzeFile(self):
-        dp = DissociatedPress("tests/data/big.sqlite")
-        contents = file("scrap/cducsu.txt").read()
-        #dp.analyze(contents)
+    def NOTtestAnalyzeFile(self):
+        dp = DissociatedPress("tests/data/test.sqlite")
+        contents = file("tests/data/die-linke.txt").read().decode("utf-8")
+        dp.analyze(contents)
         for i in range(100):
             dp.next()
 
-    def testIncreaseOrder(self):
-        pass
+    def testInitialSeed(self):
+        dp = DissociatedPress("tests/data/test.sqlite")
+        dp.analyze("0123456789")
+        dp.order = 5
+        self.assertEquals(dp.seed,"01234")
+
+    def testIncreaseOrderContinuity(self):
+        dp = DissociatedPress("tests/data/test.sqlite")
+        dp.analyze("0123456789")
+        dp.order = 5
+        self.assertEquals(dp.next(),"5")
+        dp.order = 6
+        self.assertEquals(dp.next(),"6")
+
+    def testDecreaseOrderContinuity(self):
+        dp = DissociatedPress("tests/data/test.sqlite")
+        dp.analyze("0123456789")
+        dp.order = 5
+        self.assertEquals(dp.next(),"5")
+        dp.order = 4
+        self.assertEquals(dp.next(),"6")
 
 if __name__ == '__main__' :
-    unittest.main(defaultTest="DissociatedPressTests.testBadSeed")
-    #unittest.main()
+    #unittest.main(defaultTest="DissociatedPressTests.testBadSeed")
+    unittest.main()
