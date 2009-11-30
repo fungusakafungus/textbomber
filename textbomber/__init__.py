@@ -1,2 +1,0 @@
-class Simulation:
-    pass
