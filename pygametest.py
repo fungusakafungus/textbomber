@@ -7,7 +7,7 @@ import numpy as np
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
-pygame.init()
+#pygame.init()
 
 def sign(x):
     if x<0:
@@ -42,6 +42,7 @@ class Ship(pygame.sprite.Sprite):
     dist=0
     def __init__(self):
         global screen,transparent
+        pygame.sprite.Sprite.__init__(self)
         self.shipimg = pygame.image.load("images/ship.png").convert_alpha()
         self.shipimg = pygame.transform.rotate(self.shipimg,-90)
         self.ship_rect = self.shipimg.get_rect()
@@ -64,29 +65,15 @@ class Ship(pygame.sprite.Sprite):
 
     def tick(self):
         global screen
-        deltat=pygame.time.get_ticks()-self.last_ticks
-        #print "deltat: %i" % deltat
-
-        if self.turn:
-            self.angular_velocity += self.angular_acceleration*self.turn*deltat
-
-        if abs(self.angular_velocity)>self.angular_friction*deltat:
-            self.angular_velocity = sign(self.angular_velocity)*(abs(self.angular_velocity)-self.angular_friction*deltat)
-        else:
-            self.angular_velocity = 0
-
-        self.last_angle=self.angle
-        self.angle += self.angular_velocity*deltat
-
-        # acceleration:
-        if self.accelerate:
-            self.velocity += np.array([np.cos(self.angle),np.sin(self.angle)])*self.acceleration*deltat
-            # [V+deltat*self.acceleration*projection for V,projection in zip(self.velocity,(math.cos(self.angle),math.sin(self.angle)))]
-            #print "velocity: %s" % self.velocity
         
-        # friction:
-        if np.length(self.velocity)>self.friction*deltat:
-            self.velocity *= (np.length(self.velocity)-self.friction*deltat)/np.length(self.velocity)
+        #print "position: %s" % self.position
+
+        if self.angle > 2 * math.pi:
+            self.angle -=2 * math.pi
+        elif self.angle < 0:
+            self.angle += 2 * math.pi
+        if not screen.get_rect().collidepoint(self.position.tolist()):
+            self.position %= [background.get_width(), background.get_height()]
         else:
             self.velocity = np.array([0., 0.])
 
@@ -103,7 +90,7 @@ class Ship(pygame.sprite.Sprite):
             self.position %= [background.get_width(), background.get_height()]
         index = int(self.angle / (2*math.pi) * self.imagesnum)
         if not self.images.has_key(index):
-            self.images[index] = pygame.transform.rotozoom(self.shipimg, -self.angle / (2*math.pi) * 360, self.scalefactor)
+            self.images[index] = pygame.transform.rotozoom(self.srcimage, -self.angle / (2*math.pi) * 360, self.scalefactor)
             #self.images[index] = pygame.transform.scale(self.shipimg, (10,10))
             #print self.images[index]
         #self.shiprect.x = self.x - self.shiprect.width/2
@@ -172,6 +159,7 @@ class Ship(pygame.sprite.Sprite):
         # draw ship
         index = int(self.angle / (2*math.pi) * self.imagesnum)
         tmp=self.position-np.array((self.ship_rect.width/2,self.ship_rect.height/2))
+        self.image = self.images[index]
         self.ship_rect = screen.blit(self.images[index], tmp.tolist())
         dirty_rects += [self.ship_rect.__copy__()]
         #print "draw %s" % self.ship_rect
@@ -196,7 +184,6 @@ print "background flags: %x" % background.get_flags()
 #foreground = background.convert_alpha()
 #print "foreground flags: %x" % foreground.get_flags()
 #foreground.fill(transparent)
-dirty_rects=[]
 ship = Ship()
 
 
@@ -242,7 +229,3 @@ while 1:
         dirty_rects=[]
 
 ### end
-
-
-
-

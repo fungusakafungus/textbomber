@@ -42,6 +42,7 @@ class TextBomber(flying.Dropping):
     def __init__(self,srcimage,scalefactor):
         flying.Dropping.__init__(self,srcimage,scalefactor)
         self.dp = dissociatedpress.DissociatedPress("cducsu.sqlite")
+        self.dp.order = self.dp.max_order
         self.olddroppings = pygame.sprite.RenderPlain()
 
         # Initialise sprites
@@ -50,29 +51,28 @@ class TextBomber(flying.Dropping):
     def drop(self):
         char = self.dp.next()
         font = pygame.font.Font(pygame.font.get_default_font(),40)
-        font.set_bold(1)
+        #font.set_bold(1)
         font2 = pygame.font.Font(pygame.font.get_default_font(),35)
         letterbg = font.render(char, 1, (0,0,0))
-        letter = font2.render(char, 1, (255,255,255))
-        letterbg.blit(letter, (1,1))
+        #letter = font2.render(char, 1, (255,255,255))
+        #letterbg.blit(letter, (1,1))
         letterbg = letterbg.convert_alpha()
-        newsprite = flying.Passive(letterbg,2.1)
+        newsprite = flying.Passive(letterbg,3.0)
         newsprite.alpha = 101
         newsprite.blendmode = pygame.BLEND_RGBA_ADD
         newsprite.friction = 0.00008
         newsprite.angle = math.atan2(*(self.velocity[::-1]))
         newsprite.rect.x = self.rect.x
         newsprite.rect.y = self.rect.y
-        newsprite.velocity = self.velocity/2
+        #newsprite.velocity = self.velocity/2
         newsprite.update()
         #newsprite.image.set_flags(pygame.SRCALPHA)
         #newsprite.image.blit = functools.partial(newsprite.image.blit(),
-        self.drop_interval = 10
+        self.drop_interval = 7
         self.droppings.add(newsprite)
         for victim in self.droppings.sprites():
             if np.length(victim.velocity) < 0.01:
                 self.olddroppings.add(victim)
-                print "dr: %s, od: %s" % (len(self.droppings), len(self.olddroppings))
                 sys.stdout.flush()
 
     def tick(self):
@@ -82,6 +82,8 @@ class TextBomber(flying.Dropping):
         for d in self.olddroppings:
             d.kill()
 
+        screen.blit(background, self.rect, self.rect)
+        pygame.draw.circle(background, (255,255,255), self.rect.center, self.rect.w/2)
         screen.blit(background, self.rect, self.rect)
         for d in self.droppings:
             screen.blit(background, d.rect, d.rect)
@@ -97,12 +99,12 @@ def main():
 
     # Initialise screen
     pygame.init()
-    screen = pygame.display.set_mode((800, 440))
+    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     screen.set_alpha(255)
     pygame.display.set_caption('Textbomber')
 
     TIMEREVENT = pygame.USEREVENT+0
-    fps = 20
+    fps = 30
 
     #pygame.event.set_grab(True)
     pygame.mouse.set_visible(False)
