@@ -44,7 +44,7 @@ abc ab
     def testPrefer0(self):
         dp = DissociatedPress("tests/data/abc2.sqlite")
         preferLogger = logging.getLogger("dissociatedpress.prefer")
-        preferLogger.setLevel(logging.info)
+        preferLogger.setLevel(logging.INFO)
         try:
             dp.analyze("abababababababab",0)
         except Warning:

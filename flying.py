@@ -45,6 +45,7 @@ class Passive(pygame.sprite.DirtySprite):
         self.angular_friction =     0.000005
         self.last_ticks = pygame.time.get_ticks() # last time (pygame.time.get_ticks()) when self.tick was called
         self.alpha = 255
+        self.bgcolor = (0,0,0)
         
     def update(self):
         global background
@@ -76,7 +77,8 @@ class Passive(pygame.sprite.DirtySprite):
 
         index = int(self.angle / (2 * math.pi) * self.imagesnum)
         if not self.images.has_key(index):
-            self.images[index] = pygame.transform.rotozoom(self.srcimage, -self.angle / (2 * math.pi) * 360, 1 / self.scalefactor).convert_alpha()
+            self.images[index] = pygame.transform.rotozoom(self.srcimage, -self.angle / (2 * math.pi) * 360, 1 / self.scalefactor)
+            self.images[index].set_colorkey(self.bgcolor)
             self.images[index].set_alpha(self.alpha)
 
         self.image = self.images[index]
@@ -105,13 +107,13 @@ class Active(Passive):
             #print "velocity: %s" % self.velocity
         return Passive._calcnewpos(self)
 
-class Dropping(Active):
+class Bomber(Active):
     def __init__(self,srcimage,scalefactor=1):
         Active.__init__(self,srcimage,scalefactor)
         self.droppos = self.newpos = self.rect
         self.drop_interval = 20
         self.pos_delta = 0
-        self.droppings = pygame.sprite.OrderedUpdates()
+        self.bombs = pygame.sprite.OrderedUpdates()
 
     def _calcnewpos(self):
         self.newpos = Active._calcnewpos(self)
@@ -123,9 +125,11 @@ class Dropping(Active):
         #sys.stdout.write("d: %s\n" % (delta))
         #sys.stdout.flush()
         if self.pos_delta > self.drop_interval:
-            self.droppos = self.newpos
-            self.drop()
-        self.droppings.update()
+            if self.pos_delta - self.drop_interval < self.area.w / 3:
+                self.droppos = self.newpos.move(-self.velocity * (self.pos_delta - self.drop_interval))
+                self.drop()
+            else:
+                self.droppos = self.newpos
 
     def drop(self):
         pass
