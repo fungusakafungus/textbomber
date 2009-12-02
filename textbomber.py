@@ -41,7 +41,7 @@ def load_png(name):
     return image
 
 class LetterBomb(flying.Rotatable):
-    def __init__(self,char):
+    def __init__(self,char,angle):
         global font
         self.logger = logging.getLogger(self.__class__.__name__)
         self.bgcolor=(0,100,0)
@@ -49,27 +49,27 @@ class LetterBomb(flying.Rotatable):
         self.min_alpha = 20
         self.fading_rate = 0.02 # part of opacity to loose every update
         self.alive = 1
+        self.angle = angle
         #self.font.set_bold(1)
         #self.font2 = pygame.font.Font(pygame.font.get_default_font(),35)
         letter = font.render(char, 1, (255,255,255),self.bgcolor).convert()
-        letter.set_colorkey(self.bgcolor)
+        letter.set_colorkey(None)
         letter.set_alpha(None)
-        self.logger.debug("colorkey: %s" % (letter.get_colorkey(),))
-        self.logger.debug("alpha: %s" % (letter.get_alpha(),))
+        flying.Rotatable.__init__(self,letter,2.0)
+        flying.Rotatable.update(self)
+        letter.set_colorkey(self.bgcolor)
         letter.set_alpha(self.alpha)
         self.logger.debug("colorkey: %s" % (letter.get_colorkey(),))
         self.logger.debug("alpha: %s" % (letter.get_alpha(),))
-        flying.Rotatable.__init__(self,letter,2.0)
-        self.srcimage = self.srcimage.convert()
 
     def update(self):
         if self.alive:
             self.alpha = self.alpha * (1 - self.fading_rate)
-            flying.Rotatable.update(self)
-            self.image.set_alpha(self.alpha)
             if self.alpha <= self.min_alpha:
                 self.alpha = self.min_alpha
                 self.alive = 0
+            self.image.set_alpha(self.alpha)
+            flying.Rotatable.update(self)
 
 
 
@@ -101,8 +101,8 @@ class TextBomber(flying.Bomber):
         #letter = self.font2.render(char, 1, (255,255,255),self.bgcolor)
         #letter.set_colorkey(self.bgcolor)
         #letter.blit(letter, (1,1))
-        newbomb = LetterBomb(char)
-        newbomb.angle = math.atan2(*(self.velocity[::-1]))
+        angle = math.atan2(*(self.velocity[::-1]))
+        newbomb = LetterBomb(char,angle)
         newbomb.rect.x = self.droppos.x
         newbomb.rect.y = self.droppos.y
         #newbomb.velocity = self.velocity/2
