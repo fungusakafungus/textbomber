@@ -47,13 +47,13 @@ class LetterBomb(flying.Rotatable):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.bgcolor = (0,0,0)
         self.alpha = 255
-        self.min_alpha = 20
-        self.fading_rate = 0.02 # part of opacity to loose every update
+        self.min_alpha = 40
+        self.fading_rate = 0.002 # part of opacity to loose every update
         self.alive = 1
         #self.font.set_bold(1)
         #self.font2 = pygame.font.Font(pygame.font.get_default_font(),35)
         letter = font.render(char, 1, (255,255,255), self.bgcolor).convert()
-        letter.set_colorkey(self.bgcolor)
+        letter.set_colorkey(None)
         letter.set_alpha(None)
         flying.Rotatable.__init__(self,letter,3.0)
         self.angle = angle
@@ -63,7 +63,7 @@ class LetterBomb(flying.Rotatable):
         bg.blit(self.image,bg.get_rect())
         bg.set_colorkey(self.bgcolor)
         bg.set_alpha(self.alpha)
-        #self.image = bg
+        self.image = bg
         self.logger.debug("colorkey: %s" % (letter.get_colorkey(),))
         self.logger.debug("alpha: %s" % (letter.get_alpha(),))
 
@@ -82,8 +82,8 @@ class TextBomber(flying.Bomber):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.acceleration = 0.002 # velocity increase per milisecond when accelerating (Up pressed)
         self.friction =     0.0001 # velocity decrease per milisecond
-        self.angular_friction =     0.000006
-        self.angular_acceleration = 0.00002 # radians per millisecond^2
+        self.angular_friction =     0.0000012
+        self.angular_acceleration = 0.000002 # radians per millisecond^2
         self.dp = dissociatedpress.DissociatedPress("politik.sqlite")
         self.dp.order = self.dp.max_order
         self.oldbombs = pygame.sprite.RenderPlain()
@@ -93,6 +93,7 @@ class TextBomber(flying.Bomber):
         self.min_velocity = 0.2
         self.min_order = 5
         self.velocity = self.velocity * 10
+        self.max_velocity = 0.4
 
         # Initialise sprites
         self.sprite = pygame.sprite.RenderPlain(self)
@@ -148,13 +149,25 @@ class TextBomber(flying.Bomber):
         
         pygame.display.flip()
 
+    def calcvelocity(self):
+        smax = self.max_velocity
+        smin = self.min_velocity
+        vmax = self.dp.max_order
+        vmin = 4
+        v = self.dp.order
+        s = (v - vmin) / (vmax - vmin) * (smax - smin) + smin
+        self.velocity = self.velocity * s / np.length(self.velocity)
+
     def increase_order(self):
         if self.dp.order < self.dp.max_order:
             self.dp.order = self.dp.order + 1
+        self.calcvelocity()
 
     def decrease_order(self):
         if self.dp.order > self.min_order:
             self.dp.order = self.dp.order - 1
+        self.calcvelocity()
+
 def main():
     global background, screen, font
 
