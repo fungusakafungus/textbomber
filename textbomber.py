@@ -52,8 +52,8 @@ class LetterBomb(flying.Rotatable):
         self.alive = 1
         #self.font.set_bold(1)
         #self.font2 = pygame.font.Font(pygame.font.get_default_font(),35)
-        letter = font.render(char, 1, (0,0,0), self.bgcolor).convert()
-        letter.set_colorkey((0,0,0))
+        letter = font.render(char, 1, (0,0,0), self.bgcolor)
+        letter.set_colorkey(self.bgcolor)
         letter.set_alpha(None)
         flying.Rotatable.__init__(self,letter,3.0)
         self.angle = angle
