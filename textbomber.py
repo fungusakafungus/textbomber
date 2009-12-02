@@ -123,7 +123,7 @@ def main():
 
     # Initialise screen
     pygame.init()
-    screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    screen = pygame.display.set_mode((400, 400), pygame.FULLSCREEN)
     pygame.display.set_caption('Textbomber')
 
     TIMEREVENT = pygame.USEREVENT+0

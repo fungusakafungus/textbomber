@@ -23,16 +23,26 @@ def countticks(callable):
         return res
     return wrap
 
-class Passive(pygame.sprite.DirtySprite):
-    """An object that will move passively across the screen"""
-
-    def __init__(self,srcimage,scalefactor=1):
-        pygame.sprite.Sprite.__init__(self)
+class Rotatable(pygame.sprite.Sprite):
         self.srcimage = srcimage
         self.scalefactor = scalefactor
         srcrect = self.srcimage.get_rect()
         self.rect = srcrect
         self.rect.w = self.rect.h = max(srcrect.w, srcrect.h) * 1.42 / self.scalefactor
+
+    def update(self):
+        index = int(self.angle / (2 * math.pi) * self.imagesnum)
+        if not self.images.has_key(index):
+            self.images[index] = pygame.transform.rotozoom(self.srcimage, -self.angle / (2 * math.pi) * 360, 1 / self.scalefactor)
+            self.images[index].set_colorkey(self.bgcolor)
+            self.images[index].set_alpha(self.alpha)
+
+        self.image = self.images[index]
+class Floating(pygame.sprite.DirtySprite):
+    """An object that will move passively across the screen"""
+
+    def __init__(self,srcimage,scalefactor=1):
+        pygame.sprite.Sprite.__init__(self)
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
         self.angle = 0
@@ -76,22 +86,17 @@ class Passive(pygame.sprite.DirtySprite):
             self.rect.x %= self.area.w
             self.rect.y %= self.area.h
 
-        index = int(self.angle / (2 * math.pi) * self.imagesnum)
-        if not self.images.has_key(index):
-            self.images[index] = pygame.transform.rotozoom(self.srcimage, -self.angle / (2 * math.pi) * 360, 1 / self.scalefactor)
-            self.images[index].set_colorkey(self.bgcolor)
-            self.images[index].set_alpha(self.alpha)
-
-        self.image = self.images[index]
         deltax = [deltat*V for V in self.velocity]
 
         return self.rect.move(deltax)
 
-class Active(Passive):
+class Active(Floating,Rotatable):
     """An object that can be controlled when moving across the screen"""
 
     def __init__(self,srcimage,scalefactor=1):
-        Passive.__init__(self,srcimage,scalefactor)
+        Floating.__init__()
+        Rotatable.__init__(self,srcimage,scalefactor)
+
         self.acceleration = 0.0001 # velocity increase per milisecond when accelerating (Up pressed)
         self.angular_acceleration = 0.00001 # radians per millisecond^2
         self.accelerate = 0 # K_UP pressed
@@ -106,7 +111,7 @@ class Active(Passive):
             self.velocity += np.array([np.cos(self.angle),np.sin(self.angle)])*self.acceleration*deltat
             # [V+deltat*self.acceleration*projection for V,projection in zip(self.velocity,(math.cos(self.angle),math.sin(self.angle)))]
             #print "velocity: %s" % self.velocity
-        return Passive._calcnewpos(self)
+        return Floating._calcnewpos(self)
 
 class Bomber(Active):
     def __init__(self,srcimage,scalefactor=1):
