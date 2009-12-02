@@ -24,7 +24,8 @@ class DissociatedPress(object):
 
     _conn = None
 
-    def __init__(self,dbfilename="default.sqlite"):
+    def __init__(self,dbfilename="default.sqlite",max_order=10):
+        self.max_order = max_order
         self.filter=DissociatedPress.defaultFilter
         self.encoding = "utf-8"
         self._conn = sqlite3.connect(dbfilename)
@@ -68,8 +69,8 @@ class DissociatedPress(object):
         sql += "?,"*(self.max_order + 1) + "?)"
 
         self._conn.executemany(sql,data)
-        if optimize:
-            self.optimize()
+        #if optimize:
+        #    self.optimize()
         self._storeHash(hash)
         self._conn.commit()
         self._trySetInitialSeed()
@@ -81,21 +82,24 @@ class DissociatedPress(object):
             sql += "c%i" % i
             if i < self.max_order: sql += ","
         sql += ")"
+        preferLogger.debug(sql)
         self._conn.execute(sql)
+        self._conn.commit()
 
     def peek(self,prefer=None):
         """Returns next character based on current chain settings"""
         
-        sql = "select c%i from (select c%i from data where 1=1 " % (self.order,self.order)
+        sql = "select c%i from data where 1 " % (self.order)
+        for i in range(self.order):
+            sql +="and c%i=? " % i
         if prefer != None:
             preferLogger.debug("preferring %i" % prefer)
             sql += "and text_id = '%i' " % prefer
-        for i in range(self.order):
-            sql +="and c%i=? " % i
-        sql += " limit 100) order by random()"
+        sql += " order by random()"
         cur = self._conn.cursor()
         assert self.seed != None
         try:
+            preferLogger.debug(sql)
             cur.execute(sql,[c for c in self.seed])
         except Exception, e:
             _debug( "execute(%s,%s)", (sql,[c for c in self.seed[:self.order]]))
