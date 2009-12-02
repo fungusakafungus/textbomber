@@ -24,30 +24,34 @@ def countticks(callable):
     return wrap
 
 class Rotatable(pygame.sprite.Sprite):
+    def __init__(self,srcimage,scalefactor=1):
+        pygame.sprite.Sprite.__init__(self)
         self.srcimage = srcimage
         self.scalefactor = scalefactor
         srcrect = self.srcimage.get_rect()
         self.rect = srcrect
         self.rect.w = self.rect.h = max(srcrect.w, srcrect.h) * 1.42 / self.scalefactor
+        self.angle = 0
+        self.imagesnum = 48
+        self.images = {}
 
     def update(self):
         index = int(self.angle / (2 * math.pi) * self.imagesnum)
         if not self.images.has_key(index):
             self.images[index] = pygame.transform.rotozoom(self.srcimage, -self.angle / (2 * math.pi) * 360, 1 / self.scalefactor)
             self.images[index].set_colorkey(self.bgcolor)
+            self.images[index].convert()
             self.images[index].set_alpha(self.alpha)
 
         self.image = self.images[index]
-class Floating(pygame.sprite.DirtySprite):
+class Floating(pygame.sprite.Sprite):
     """An object that will move passively across the screen"""
 
-    def __init__(self,srcimage,scalefactor=1):
+    def __init__(self):
         pygame.sprite.Sprite.__init__(self)
         screen = pygame.display.get_surface()
         self.area = screen.get_rect()
         self.angle = 0
-        self.imagesnum = 48
-        self.images = {}
         self.friction =     0.00002 # velocity decrease per milisecond
         self.gravity =      0 #0.00003
         self.velocity = np.array([20.0/1000,20.0/1000]) # pixel per millisecond
@@ -94,7 +98,7 @@ class Active(Floating,Rotatable):
     """An object that can be controlled when moving across the screen"""
 
     def __init__(self,srcimage,scalefactor=1):
-        Floating.__init__()
+        Floating.__init__(self)
         Rotatable.__init__(self,srcimage,scalefactor)
 
         self.acceleration = 0.0001 # velocity increase per milisecond when accelerating (Up pressed)
@@ -128,6 +132,8 @@ class Bomber(Active):
 
     def update(self):
         Active.update(self)
+        Rotatable.update(self)
+
         #sys.stdout.write("d: %s\n" % (delta))
         #sys.stdout.flush()
         if self.pos_delta > self.drop_interval:

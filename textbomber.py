@@ -23,6 +23,7 @@ os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 logging.basicConfig(filename="textbomber.log")
 
+
 def load_png(name):
     """Load image and return surface"""
     fullname = os.path.join('images', name)
@@ -36,6 +37,30 @@ def load_png(name):
         print 'Cannot load image:', fullname
         raise SystemExit, message
     return image
+
+class LetterBomb(flying.Rotatable):
+    def __init__(self,char):
+        global font
+        self.bgcolor=(0,100,0)
+        #self.font.set_bold(1)
+        #self.font2 = pygame.font.Font(pygame.font.get_default_font(),35)
+        letter = font.render(char, 1, (255,255,255),self.bgcolor).convert()
+        letter.set_colorkey(self.bgcolor)
+        flying.Rotatable.__init__(self,letter,2.0)
+        self.alpha = 100
+        self.min_alpha = 20
+        self.fading_rate = 0.02 # part of opacity to loose every update
+        self.alive = 1
+
+    def update(self):
+        if self.alive:
+            self.alpha = self.alpha * (1 - self.fading_rate)
+            flying.Rotatable.update(self)
+            if self.alpha <= self.min_alpha:
+                self.alpha = self.min_alpha
+                self.alive = 0
+
+
 
 class TextBomber(flying.Bomber):
     def __init__(self,srcimage,scalefactor=1.0):
@@ -57,41 +82,29 @@ class TextBomber(flying.Bomber):
         # Initialise sprites
         self.sprite = pygame.sprite.RenderPlain(self)
 
-        # drop
-        self.font = pygame.font.Font(pygame.font.get_default_font(),40)
-        #self.font.set_bold(1)
-        self.font2 = pygame.font.Font(pygame.font.get_default_font(),35)
 
     def drop(self):
+        self.logger.info("ship velocity: %s" % self.velocity)
         char = self.dp.next()
 
-        letterbg = self.font.render(char, 1, (255,255,255),self.bgcolor).convert()
-        letterbg.set_colorkey(self.bgcolor)
-        #letterbg.set_alpha(254)
+        #letter.set_alpha(254)
         #letter = self.font2.render(char, 1, (255,255,255),self.bgcolor)
         #letter.set_colorkey(self.bgcolor)
-        #letterbg.blit(letter, (1,1))
-        newsprite = flying.Passive(letterbg,3.1)
-        newsprite.alpha = 255
-        #newsprite.blendmode = pygame.BLEND_RGBA_ADD
-        newsprite.friction = 0.00008
-        newsprite.angle = math.atan2(*(self.velocity[::-1]))
-        newsprite.rect.x = self.droppos.x
-        newsprite.rect.y = self.droppos.y
-        #newsprite.velocity = self.velocity/2
-        #newsprite.image.set_flags(pygame.SRCALPHA)
-        #newsprite.image.blit = verboseBlit
-        newsprite.update()
-        #background.blit(newsprite.image,self.droppos)
-        self.bombs.add(newsprite)
+        #letter.blit(letter, (1,1))
+        newbomb = LetterBomb(char)
+        newbomb.angle = math.atan2(*(self.velocity[::-1]))
+        newbomb.rect.x = self.droppos.x
+        newbomb.rect.y = self.droppos.y
+        #newbomb.velocity = self.velocity/2
+        #newbomb.image.set_flags(pygame.SRCALPHA)
+        #newbomb.image.blit = verboseBlit
+        #background.blit(newbomb.image,self.droppos)
+        self.bombs.add(newbomb)
+        self.bombs.update()
 
-        for victim in self.bombs.sprites():
-            if victim.image.get_alpha() < 20:
-                victim.image.set_alpha(19)
+        for victim in self.bombs:
+            if not victim.alive:
                 self.oldbombs.add(victim)
-            else:
-                victim.image.set_alpha(victim.image.get_alpha() * 0.98)
-        self.logger.info("ship velocity: %s" % self.velocity)
 
     def tick(self):
         global background, screen
@@ -105,9 +118,6 @@ class TextBomber(flying.Bomber):
             screen.blit(background, d.rect, d.rect)
 
         self.sprite.update()
-        self.logger.info("starting to update %i bombs" % len(self.bombs))
-        self.bombs.update()
-        self.logger.info("done updating bombs")
         
         #for d in self.bombs:
         #    screen.blit(d.image,d.rect)
@@ -119,11 +129,11 @@ class TextBomber(flying.Bomber):
         pygame.display.flip()
 
 def main():
-    global background, screen
+    global background, screen, font
 
     # Initialise screen
     pygame.init()
-    screen = pygame.display.set_mode((400, 400), pygame.FULLSCREEN)
+    screen = pygame.display.set_mode((400, 400))
     pygame.display.set_caption('Textbomber')
 
     TIMEREVENT = pygame.USEREVENT+0
@@ -132,6 +142,8 @@ def main():
     #pygame.event.set_grab(True)
     pygame.mouse.set_visible(False)
     pygame.time.set_timer(TIMEREVENT, 1000/fps)
+
+    font = pygame.font.Font(pygame.font.get_default_font(),40)
 
     # Initialise ship
     shipimage = load_png('ship.png')

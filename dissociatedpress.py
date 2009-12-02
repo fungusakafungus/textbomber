@@ -16,6 +16,8 @@ class DissociatedPress(object):
     order = 5
     """Initial order of the Markov chain used to generate text"""
 
+    prefer = None
+
     _targetOrder = order
 
     max_order = 10
