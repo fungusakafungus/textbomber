@@ -21,7 +21,9 @@ import flying
 
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
-logging.basicConfig(filename="textbomber.log")
+logging.basicConfig(filename="textbomber.log",level=logging.DEBUG)
+logging.getLogger("TextBomber").setLevel(logging.WARN)
+logging.getLogger("dissociatedpress").setLevel(logging.WARN)
 
 
 def load_png(name):
@@ -41,21 +43,30 @@ def load_png(name):
 class LetterBomb(flying.Rotatable):
     def __init__(self,char):
         global font
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.bgcolor=(0,100,0)
+        self.alpha = 255
+        self.min_alpha = 20
+        self.fading_rate = 0.02 # part of opacity to loose every update
+        self.alive = 1
         #self.font.set_bold(1)
         #self.font2 = pygame.font.Font(pygame.font.get_default_font(),35)
         letter = font.render(char, 1, (255,255,255),self.bgcolor).convert()
         letter.set_colorkey(self.bgcolor)
+        letter.set_alpha(None)
+        self.logger.debug("colorkey: %s" % (letter.get_colorkey(),))
+        self.logger.debug("alpha: %s" % (letter.get_alpha(),))
+        letter.set_alpha(self.alpha)
+        self.logger.debug("colorkey: %s" % (letter.get_colorkey(),))
+        self.logger.debug("alpha: %s" % (letter.get_alpha(),))
         flying.Rotatable.__init__(self,letter,2.0)
-        self.alpha = 100
-        self.min_alpha = 20
-        self.fading_rate = 0.02 # part of opacity to loose every update
-        self.alive = 1
+        self.srcimage = self.srcimage.convert()
 
     def update(self):
         if self.alive:
             self.alpha = self.alpha * (1 - self.fading_rate)
             flying.Rotatable.update(self)
+            self.image.set_alpha(self.alpha)
             if self.alpha <= self.min_alpha:
                 self.alpha = self.min_alpha
                 self.alive = 0
@@ -66,7 +77,6 @@ class TextBomber(flying.Bomber):
     def __init__(self,srcimage,scalefactor=1.0):
         flying.Bomber.__init__(self,srcimage,scalefactor)
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)
         self.acceleration = 0.0002 # velocity increase per milisecond when accelerating (Up pressed)
         self.friction =     0.0001 # velocity decrease per milisecond
         self.angular_friction =     0.000020
@@ -109,7 +119,6 @@ class TextBomber(flying.Bomber):
     def tick(self):
         global background, screen
         self.oldbombs.draw(background)
-        self.oldbombs.draw(screen)
         for d in self.oldbombs:
             d.kill()
 
