@@ -42,8 +42,8 @@ class TextBomber(flying.Bomber):
         flying.Bomber.__init__(self,srcimage,scalefactor)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging.DEBUG)
-        self.acceleration = 0.0005 # velocity increase per milisecond when accelerating (Up pressed)
-        self.friction =     0.0002 # velocity decrease per milisecond
+        self.acceleration = 0.0002 # velocity increase per milisecond when accelerating (Up pressed)
+        self.friction =     0.0001 # velocity decrease per milisecond
         self.angular_friction =     0.000020
         self.angular_acceleration = 0.00004 # radians per millisecond^2
         self.dp = dissociatedpress.DissociatedPress("cducsu.sqlite")
@@ -91,6 +91,7 @@ class TextBomber(flying.Bomber):
                 self.oldbombs.add(victim)
             else:
                 victim.image.set_alpha(victim.image.get_alpha() * 0.98)
+        self.logger.info("ship velocity: %s" % self.velocity)
 
     def tick(self):
         global background, screen
@@ -126,7 +127,7 @@ def main():
     pygame.display.set_caption('Textbomber')
 
     TIMEREVENT = pygame.USEREVENT+0
-    fps = 20
+    fps = 15
 
     #pygame.event.set_grab(True)
     pygame.mouse.set_visible(False)

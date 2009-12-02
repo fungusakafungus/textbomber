@@ -46,7 +46,8 @@ class Passive(pygame.sprite.DirtySprite):
         self.last_ticks = pygame.time.get_ticks() # last time (pygame.time.get_ticks()) when self.tick was called
         self.alpha = 255
         self.bgcolor = (0,0,0)
-        
+        self.min_velocity = 0.3
+
     def update(self):
         global background
         newpos = self._calcnewpos()
@@ -63,10 +64,10 @@ class Passive(pygame.sprite.DirtySprite):
         self.angle += self.angular_velocity * deltat
 
         # friction:
-        if np.length(self.velocity) > self.friction * deltat:
+        if np.length(self.velocity) - self.min_velocity > self.friction * deltat:
             self.velocity *= (np.length(self.velocity) - self.friction * deltat) / np.length(self.velocity)
-        else:
-            self.velocity = np.array([0., 0.])
+        #else:
+        #    self.velocity = np.array([0., 0.])
 
         self.velocity[1] = self.velocity[1] + self.gravity * deltat
 
