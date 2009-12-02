@@ -45,14 +45,14 @@ class LetterBomb(flying.Rotatable):
     def __init__(self,char,angle):
         global font
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.bgcolor = (255,255,255)
+        self.bgcolor = (0,0,0)
         self.alpha = 255
         self.min_alpha = 20
         self.fading_rate = 0.02 # part of opacity to loose every update
         self.alive = 1
         #self.font.set_bold(1)
         #self.font2 = pygame.font.Font(pygame.font.get_default_font(),35)
-        letter = font.render(char, 1, (0,0,0), self.bgcolor)
+        letter = font.render(char, 1, (255,255,255), self.bgcolor).convert()
         letter.set_colorkey(self.bgcolor)
         letter.set_alpha(None)
         flying.Rotatable.__init__(self,letter,3.0)
@@ -89,7 +89,7 @@ class TextBomber(flying.Bomber):
         self.oldbombs = pygame.sprite.RenderPlain()
         self.drop_interval = 10
         self.imagesnum = 48
-        self.bgcolor=(255,255,255)
+        self.bgcolor=(0,0,0)
         self.min_velocity = 0.2
         self.min_order = 5
         self.velocity = self.velocity * 10
