@@ -38,10 +38,9 @@ class Rotatable(pygame.sprite.Sprite):
     def update(self):
         index = int(self.angle / (2 * math.pi) * self.imagesnum)
         if not self.images.has_key(index):
+            #if not isinstance(self,Bomber) and not self.bgcolor == self.srcimage.get_colorkey():
+            #    raise AssertionError("%s != %s"%(self.bgcolor, self.srcimage.get_colorkey()))
             self.images[index] = pygame.transform.rotozoom(self.srcimage, -self.angle / (2 * math.pi) * 360, 1 / self.scalefactor)
-            self.images[index].set_colorkey(self.bgcolor)
-            self.images[index].convert()
-            self.images[index].set_alpha(self.alpha)
 
         self.image = self.images[index]
 class Floating(pygame.sprite.Sprite):
