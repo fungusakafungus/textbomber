@@ -31,14 +31,14 @@ class Rotatable(pygame.sprite.Sprite):
         srcrect = self.srcimage.get_rect()
         self.rect = srcrect
         self.rect.w = self.rect.h = max(srcrect.w, srcrect.h) * 1.42 / self.scalefactor
-        self.angle = 0
         self.imagesnum = 48
         self.images = {}
 
     def update(self):
         index = int(self.angle / (2 * math.pi) * self.imagesnum)
         if not self.images.has_key(index):
-            #if not isinstance(self,Bomber) and not self.bgcolor == self.srcimage.get_colorkey():
+            if not isinstance(self,Bomber):
+                self.logger.debug("self.angle: %s" % self.angle)
             #    raise AssertionError("%s != %s"%(self.bgcolor, self.srcimage.get_colorkey()))
             self.images[index] = pygame.transform.rotozoom(self.srcimage, -self.angle / (2 * math.pi) * 360, 1 / self.scalefactor)
 
@@ -76,6 +76,7 @@ class Floating(pygame.sprite.Sprite):
         self.last_angle = self.angle
         self.angle += self.angular_velocity * deltat
 
+        self.velocity = np.length(self.velocity) * np.array((math.sin(-self.angle), math.cos(-self.angle)))
         # friction:
         if np.length(self.velocity) - self.min_velocity > self.friction * deltat:
             self.velocity *= (np.length(self.velocity) - self.friction * deltat) / np.length(self.velocity)
@@ -135,12 +136,13 @@ class Bomber(Active):
 
         #sys.stdout.write("d: %s\n" % (delta))
         #sys.stdout.flush()
+        self.logger.debug("self.drop_interval: %s" % self.drop_interval)
         if self.pos_delta > self.drop_interval:
             if self.pos_delta - self.drop_interval < self.area.w / 3:
                 self.droppos = self.newpos.move(-self.velocity * (self.pos_delta - self.drop_interval))
-                self.drop()
             else:
                 self.droppos = self.newpos
+            self.drop()
 
     def drop(self):
         pass

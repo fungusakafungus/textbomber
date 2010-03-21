@@ -22,8 +22,9 @@ import flying
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 logging.basicConfig(filename="textbomber.log",level=logging.DEBUG)
-logging.getLogger("TextBomber").setLevel(logging.WARN)
-logging.getLogger("dissociatedpress").setLevel(logging.WARN)
+#logging.getLogger("LetterBomb").setLevel(logging.WARN)
+#logging.getLogger("TextBomber").setLevel(logging.WARN)
+#logging.getLogger("dissociatedpress").setLevel(logging.WARN)
 
 
 def load_png(name):
@@ -44,21 +45,25 @@ class LetterBomb(flying.Rotatable):
     def __init__(self,char,angle):
         global font
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.bgcolor=(0,100,0)
+        self.bgcolor = (0,0,0)
         self.alpha = 255
-        self.min_alpha = 20
-        self.fading_rate = 0.02 # part of opacity to loose every update
+        self.min_alpha = 40
+        self.fading_rate = 0.002 # part of opacity to loose every update
         self.alive = 1
-        self.angle = angle
         #self.font.set_bold(1)
         #self.font2 = pygame.font.Font(pygame.font.get_default_font(),35)
-        letter = font.render(char, 1, (255,255,255),self.bgcolor).convert()
+        letter = font.render(char, 1, (255,255,255), self.bgcolor).convert()
         letter.set_colorkey(None)
         letter.set_alpha(None)
-        flying.Rotatable.__init__(self,letter,2.0)
+        flying.Rotatable.__init__(self,letter,3.0)
+        self.angle = angle
         flying.Rotatable.update(self)
-        letter.set_colorkey(self.bgcolor)
-        letter.set_alpha(self.alpha)
+        bg = self.image.convert()
+        bg.fill(self.bgcolor)
+        bg.blit(self.image,bg.get_rect())
+        bg.set_colorkey(self.bgcolor)
+        bg.set_alpha(self.alpha)
+        self.image = bg
         self.logger.debug("colorkey: %s" % (letter.get_colorkey(),))
         self.logger.debug("alpha: %s" % (letter.get_alpha(),))
 
@@ -71,30 +76,37 @@ class LetterBomb(flying.Rotatable):
             self.image.set_alpha(self.alpha)
             flying.Rotatable.update(self)
 
-
-
 class TextBomber(flying.Bomber):
     def __init__(self,srcimage,scalefactor=1.0):
         flying.Bomber.__init__(self,srcimage,scalefactor)
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.acceleration = 0.0002 # velocity increase per milisecond when accelerating (Up pressed)
+        self.acceleration = 0.002 # velocity increase per milisecond when accelerating (Up pressed)
         self.friction =     0.0001 # velocity decrease per milisecond
-        self.angular_friction =     0.000020
-        self.angular_acceleration = 0.00004 # radians per millisecond^2
-        self.dp = dissociatedpress.DissociatedPress("cducsu.sqlite")
+        self.angular_friction =     0.0000012
+        self.angular_acceleration = 0.000002 # radians per millisecond^2
+        self.dp = dissociatedpress.DissociatedPress("politik.sqlite")
         self.dp.order = self.dp.max_order
         self.oldbombs = pygame.sprite.RenderPlain()
         self.drop_interval = 10
         self.imagesnum = 48
-        self.bgcolor=(0,100,0)
-        self.word = ''
+        self.bgcolor=(0,0,0)
+        self.min_velocity = 0.2
+        self.min_order = 5
+        self.velocity = self.velocity * 10
+        self.max_velocity = 0.4
 
         # Initialise sprites
         self.sprite = pygame.sprite.RenderPlain(self)
 
 
+    def calcprefer(self):
+        max_r = 2
+        r = int((math.cos(self.angle) / 2.0 + 0.5) * (max_r + 1))
+        self.logger.debug("r: %s" % r)
+        return r
     def drop(self):
         self.logger.info("ship velocity: %s" % self.velocity)
+        self.dp.prefer = self.calcprefer()
         char = self.dp.next()
 
         #letter.set_alpha(254)
@@ -137,16 +149,35 @@ class TextBomber(flying.Bomber):
         
         pygame.display.flip()
 
+    def calcvelocity(self):
+        smax = self.max_velocity
+        smin = self.min_velocity
+        vmax = self.dp.max_order
+        vmin = 4
+        v = self.dp.order
+        s = (v - vmin) / (vmax - vmin) * (smax - smin) + smin
+        self.velocity = self.velocity * s / np.length(self.velocity)
+
+    def increase_order(self):
+        if self.dp.order < self.dp.max_order:
+            self.dp.order = self.dp.order + 1
+        self.calcvelocity()
+
+    def decrease_order(self):
+        if self.dp.order > self.min_order:
+            self.dp.order = self.dp.order - 1
+        self.calcvelocity()
+
 def main():
     global background, screen, font
 
     # Initialise screen
     pygame.init()
-    screen = pygame.display.set_mode((400, 400))
+    screen = pygame.display.set_mode()
     pygame.display.set_caption('Textbomber')
 
     TIMEREVENT = pygame.USEREVENT+0
-    fps = 15
+    fps = 20
 
     #pygame.event.set_grab(True)
     pygame.mouse.set_visible(False)
@@ -156,9 +187,8 @@ def main():
 
     # Initialise ship
     shipimage = load_png('ship.png')
-    shipimage = pygame.transform.rotate(shipimage,-90)
+    shipimage = pygame.transform.rotate(shipimage,-180)
     ship = TextBomber(shipimage)
-    ship.drop_interval = 5
 
     # Fill background
     background = screen.convert()
@@ -188,7 +218,9 @@ def main():
 
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
-                ship.accelerate=1
+                ship.increase_order()
+            elif event.key == pygame.K_DOWN:
+                ship.decrease_order()
             elif event.key == pygame.K_LEFT:
                 ship.turn=-1.
             elif event.key == pygame.K_RIGHT:
